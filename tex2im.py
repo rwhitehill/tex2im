@@ -1,14 +1,11 @@
 #!/usr/bin/env python3
 
-import matplotlib
-import matplotlib.pyplot as plt
-
 from pylatex import Document, Package, Command, NoEscape
 
 import sys, os
 import io
 
-from PIL import Image,ImageChops,ImageOps
+from PIL import Image,ImageChops,ImageEnhance
 from pdf2image import convert_from_path
 
 import tkinter as tk
@@ -25,11 +22,11 @@ def generate_image():
     begin_index = latex_input.index(r'\begin{document}')
     end_index   = latex_input.index(r'\end{document}')
     
-    preamble    = '\n'.join(latex_input[1:begin_index])
-
-    body = '\n'.join(latex_input[begin_index+1:end_index])
+    preamble = '\n'.join(latex_input[1:begin_index])
+    body     = '\n'.join(latex_input[begin_index+1:end_index])
     
     doc = Document(documentclass=doc_class,
+            font_size='Huge',
             lmodern=False,
             textcomp=False)
 
@@ -37,7 +34,7 @@ def generate_image():
     doc.append(NoEscape(r'%s'%body))
     doc.generate_pdf('output',clean=True,clean_tex=True)
     
-    im = convert_from_path('output.pdf')[0]
+    im = convert_from_path('output.pdf',fmt='png')[0]
     
     try:
         os.remove('output.pdf')
@@ -50,12 +47,17 @@ def generate_image():
     diff = ImageChops.add(diff,diff,1.0)
     bbox = diff.getbbox()
     im = im.crop(bbox)
-
-    width, height = im.size
-    scale = 1#fontsize/14
-    #im = im.resize((int(width*scale),int(height*scale)))
     
-    im.save('output.jpg',quality=95,optimize=False)
+    width, height = im.size
+    aspect_ratio = width/height
+    print(im.size,im.size[0]/im.size[1])
+    scale = fontsize/30
+    width  = int(width*scale)
+    height = int(width/aspect_ratio)
+    im = im.convert('RGB').resize((width,height),resample=Image.LANCZOS)
+    print(im.size,im.size[0]/im.size[1])
+    
+    im.save('output.png',quality=95,optimize=True)
     
     root.destroy()
 
