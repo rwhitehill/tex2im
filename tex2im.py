@@ -5,7 +5,7 @@ from pylatex import Document, Package, Command, NoEscape
 import sys, os
 import io
 
-from PIL import Image,ImageChops,ImageEnhance
+from PIL import Image,ImageChops,ImageOps
 from pdf2image import convert_from_path
 
 import tkinter as tk
@@ -13,7 +13,7 @@ from tkinter import ttk
 
 def generate_image():
 
-    fontsize = int(font_box.get())
+    fontsize = float(font_box.get())
     dpi      = int(dpi_box.get())
 
     latex_input = latex_box.get('1.0','end-1c')
@@ -24,22 +24,28 @@ def generate_image():
     
     preamble = '\n'.join(latex_input[1:begin_index])
     body     = '\n'.join(latex_input[begin_index+1:end_index])
+
+    with open('history.txt','a') as f:
+        f.writelines(body+'\r')
     
+    geometry_options = 'margin = 0.1in'
+
     doc = Document(documentclass=doc_class,
-            font_size='Huge',
+            font_size='normalsize',
             lmodern=False,
-            textcomp=False)
+            textcomp=False,
+            geometry_options=geometry_options)
 
     doc.preamble.append(NoEscape(r'%s'%preamble))
     doc.append(NoEscape(r'%s'%body))
     doc.generate_pdf('output',clean=True,clean_tex=True)
     
     im = convert_from_path('output.pdf',fmt='png')[0]
-    
-    try:
-        os.remove('output.pdf')
-    except:
-        pass
+
+    #try:
+    #    os.remove('output.pdf')
+    #except:
+    #    pass
 
     white = (255,255,255,255)
     bg = Image.new(im.mode,im.size,white)
@@ -49,15 +55,21 @@ def generate_image():
     im = im.crop(bbox)
     
     width, height = im.size
+    #print(im.size)
     aspect_ratio = width/height
-    print(im.size,im.size[0]/im.size[1])
-    scale = fontsize/30
-    width  = int(width*scale)
-    height = int(width/aspect_ratio)
+    scale = fontsize/15
+    max_height = 1.5*4*fontsize/3
+    if max_height < height*scale:
+        height = max_height
+    else:
+        height = height*scale
+    width  = int(height*aspect_ratio)
+    height = int(height)
+
     im = im.convert('RGB').resize((width,height),resample=Image.LANCZOS)
-    print(im.size,im.size[0]/im.size[1])
-    
-    im.save('output.png',quality=95,optimize=True)
+    im = ImageOps.expand(im,border=1,fill=white)
+    im.save('output.png',quality=95,dpi=(dpi,dpi),optimize=True)
+    #print(im.size) 
     
     root.destroy()
 
@@ -92,7 +104,7 @@ font_box = ttk.Entry(options_frame,width=3,textvariable=fontsize)
 font_box.grid()
 
 ttk.Label(options_frame,text='dpi').grid()
-dpi = tk.StringVar(value=1200)
+dpi = tk.StringVar(value=300)
 dpi_box = ttk.Entry(options_frame,width=4,textvariable=dpi)
 dpi_box.grid()
 
