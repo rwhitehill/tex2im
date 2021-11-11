@@ -101,11 +101,13 @@ def get_unique_name(file_name):
 
     return file_name
 
-def clean_files(base,clean_tex=False):
+def clean_files(base,clean_dvi=True,clean_tex=False):
     file_types = ['aux','log']
+    if clean_dvi:
+        file_types.append('dvi')
     if clean_tex:
         file_types.append('tex')
-    
+
     for file_type in file_types:
         try:
             os.remove(base+file_type)
@@ -130,12 +132,11 @@ if __name__ == '__main__':
         res = subprocess.run(latex_cmd,shell=True,stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
         
         base = file_name[:file_name.index('.')+1]
-        clean_files(base,clean_tex=False)
-        
         dpi = get_dpi(fontsize)
-        print(dpi)
         convert_dvi_cmd = 'dvipng %s -o %s -T "tight" -D %d'%(base+'dvi',base+'png',dpi)
         res = subprocess.run(convert_dvi_cmd,shell=True,stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
+        
+        clean_files(base,clean_dvi=True,clean_tex=True)
 
     except:
         None
