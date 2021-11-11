@@ -1,128 +1,143 @@
 #!/usr/bin/env python3
 
-from pylatex import Document, Package, Command, NoEscape
+import os, sys
+from pathlib import Path
+import subprocess
 
-import sys, os
-import io
-
-from PIL import Image,ImageChops,ImageOps
-from pdf2image import convert_from_path
+#from PIL import Image,ImageChops,ImageOps
+#from pdf2image import convert_from_path
 
 import tkinter as tk
+from tkinter import messagebox
 from tkinter import ttk
 
-def generate_image():
-
-    fontsize = float(font_box.get())
-    dpi      = int(dpi_box.get())
-
-    latex_input = latex_box.get('1.0','end-1c')
-    latex_input = latex_input.split('\n')
-    doc_class   = latex_input[0][latex_input[0].index(r'{')+1:-1]
-    begin_index = latex_input.index(r'\begin{document}')
-    end_index   = latex_input.index(r'\end{document}')
+class inputWindow(tk.Tk):
     
-    preamble = '\n'.join(latex_input[1:begin_index])
-    body     = '\n'.join(latex_input[begin_index+1:end_index])
+    def __init__(self):
+        super().__init__()
+        
+        ### configuring root window
+        self.title('Latex to Image')
+        self.resizable(height=False,width=False)
 
-    with open('history.txt','a') as f:
-        f.writelines(body+'\r')
+        ### main box with latex script
+        home = str(Path.home())
+        if not os.path.isfile(home+'/.tex2im_template'):
+            tex_template = '\n'.join(['\\documentclass{article}',
+                '\\usepackage{amsmath}',
+                '\\pagestyle{empty}',
+                '\\begin{document}',
+                2*'\n',
+                '\\end{document}'])
+
+            with open(home+'/.tex2im_template','w') as file:
+                file.writelines(tex_template)
+
+        else:
+            with open(home+'/.tex2im_template','r') as file:
+                tex_template = ''.join(file.readlines())
+
+        self.script_box = tk.Text(self,width=50,height=15)
+        self.script_box.insert('1.0',tex_template)
+        self.script_box.grid()
+       
+        ### other text boxes
+        self.font_label = tk.Label(self,text='font size')
+        self.font_label.grid()
+        self.font_size = tk.StringVar(value=20)
+        self.font_box = tk.Entry(self,width=3)
+        self.font_box['textvariable'] = self.font_size
+        self.font_box.grid()
+
+        ### buttons
+        self.generate_button = ttk.Button(self,text='Generate')
+        self.generate_button['command'] = self.get_image_info
+        self.generate_button.grid()
+        
+        self.cancel_button = ttk.Button(self,text='Cancel')
+        self.cancel_button['command'] = self.destroy
+        self.cancel_button.grid()
+        
+        self.update_template_button = ttk.Button(self,text='Update template')
+        self.update_template_button['command'] = self.update_template
+        self.update_template_button.grid()
+        
+        ### opens window with information about program
+        self.message_button = ttk.Button(self,text='Information')
+        self.message_button['command'] = self.display_message
+        self.message_button.grid()
+
+        for child in self.winfo_children():
+            child.grid(padx=5,pady=5)
     
-    geometry_options = 'margin = 0.1in'
+    def display_message(self):
+        message = 'This is a program that converts short latex scripts to an image.'
+        messagebox.showinfo('Information',message)
 
-    doc = Document(documentclass=doc_class,
-            font_size='normalsize',
-            lmodern=False,
-            textcomp=False,
-            geometry_options=geometry_options)
+    def update_template(self):
+        new_template = self.script_box.get('1.0','end-1c')
 
-    doc.preamble.append(NoEscape(r'%s'%preamble))
-    doc.append(NoEscape(r'%s'%body))
-    doc.generate_pdf('output',clean=True,clean_tex=True)
+        with open(str(Path.home())+'/.tex2im_template','w') as file:
+            file.writelines(new_template)
+        
+    def get_image_info(self):
+        global latex_script, fontsize
+        latex_script = self.script_box.get('1.0','end-1c')
+        fontsize = float(self.font_box.get())
+        
+        self.destroy()
+
+def get_unique_name(file_name):
+    if os.path.isfile(file_name):
+        suffix = 1
+        dot_index = file_name.index('.')
+        while True:
+            temp = file_name[:dot_index] + str(suffix) + file_name[dot_index:]
+            if os.path.isfile(temp):
+                suffix += 1
+            else:
+                file_name = temp
+                break
+
+    return file_name
+
+def clean_files(base,clean_tex=False):
+    file_types = ['aux','log']
+    if clean_tex:
+        file_types.append('tex')
     
-    im = convert_from_path('output.pdf',fmt='png')[0]
+    for file_type in file_types:
+        try:
+            os.remove(base+file_type)
+        except:
+            continue
 
-    #try:
-    #    os.remove('output.pdf')
-    #except:
-    #    pass
+def get_dpi(fontsize):
+    return fontsize*96/72*72.27/10
 
-    white = (255,255,255,255)
-    bg = Image.new(im.mode,im.size,white)
-    diff = ImageChops.difference(im,bg)
-    diff = ImageChops.add(diff,diff,1.0)
-    bbox = diff.getbbox()
-    im = im.crop(bbox)
+if __name__ == '__main__':
     
-    width, height = im.size
-    #print(im.size)
-    aspect_ratio = width/height
-    scale = fontsize/15
-    max_height = 1.5*4*fontsize/3
-    if max_height < height*scale:
-        height = max_height
-    else:
-        height = height*scale
-    width  = int(height*aspect_ratio)
-    height = int(height)
+    root = inputWindow()    
+    root.mainloop()
 
-    im = im.convert('RGB').resize((width,height),resample=Image.LANCZOS)
-    im = ImageOps.expand(im,border=1,fill=white)
-    im.save('output.png',quality=95,dpi=(dpi,dpi),optimize=True)
-    #print(im.size) 
-    
-    root.destroy()
+    try:
+        file_name = get_unique_name('output.tex')
 
-root = tk.Tk()
-root.title('Latex to Image')
-root.resizable(height=False,width=False)
+        with open(file_name,'w') as file:
+            file.writelines(latex_script)
+        
+        latex_cmd = 'latex %s'%file_name
+        res = subprocess.run(latex_cmd,shell=True,stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
+        
+        base = file_name[:file_name.index('.')+1]
+        clean_files(base,clean_tex=False)
+        
+        dpi = get_dpi(fontsize)
+        print(dpi)
+        convert_dvi_cmd = 'dvipng %s -o %s -T "tight" -D %d'%(base+'dvi',base+'png',dpi)
+        res = subprocess.run(convert_dvi_cmd,shell=True,stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
 
-### Generates frame to hold equation textbox and information
-eq_frame = ttk.Frame(root)
-eq_frame.grid()
+    except:
+        None
 
-eq_default_prompt_list = ['\\documentclass{article}',
-        '\\usepackage{amsmath}',
-        '\\pagestyle{empty}',
-        '\\begin{document}',
-        2*'\n',
-        '\\end{document}']
-latex_box = tk.Text(eq_frame,width=50,height=15)
-latex_box.insert('1.0','\n'.join(eq_default_prompt_list))
-latex_box.grid()
 
-for child in eq_frame.winfo_children():
-    child.grid_configure(padx=5,pady=5)
-
-### Generates frame to hold option information
-options_frame = ttk.Frame(root)
-options_frame.grid()
-
-ttk.Label(options_frame,text='font size').grid()
-fontsize = tk.StringVar(value=20)
-font_box = ttk.Entry(options_frame,width=3,textvariable=fontsize)
-font_box.grid()
-
-ttk.Label(options_frame,text='dpi').grid()
-dpi = tk.StringVar(value=300)
-dpi_box = ttk.Entry(options_frame,width=4,textvariable=dpi)
-dpi_box.grid()
-
-for child in options_frame.winfo_children():
-    child.grid_configure(padx=5,pady=3)
-
-### Generates frame to hold button information
-
-button_frame = ttk.Frame(root)
-button_frame.grid()
-
-generate_button = ttk.Button(button_frame,text='Generate',command=generate_image)
-generate_button.grid()
-
-cancel_button = ttk.Button(button_frame,text='Cancel',command=root.destroy)
-cancel_button.grid()
-
-for child in button_frame.winfo_children():
-    child.grid_configure(padx=3,pady=3)
-
-root.mainloop()
