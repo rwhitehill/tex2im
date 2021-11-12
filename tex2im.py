@@ -4,18 +4,24 @@ import os, sys
 from pathlib import Path
 import subprocess
 
-#from PIL import Image,ImageChops,ImageOps
-#from pdf2image import convert_from_path
+from PIL import Image,ImageChops,ImageOps
+from PIL.PngImagePlugin import PngImageFile, PngInfo
 
 import tkinter as tk
 from tkinter import messagebox
 from tkinter import ttk
+
+
+#version = '0.0.1'
 
 class inputWindow(tk.Tk):
     
     def __init__(self):
         super().__init__()
         
+        ### set cancel default to True
+        self.cancel = True
+
         ### configuring root window
         self.title('Latex to Image')
         self.resizable(height=False,width=False)
@@ -79,8 +85,9 @@ class inputWindow(tk.Tk):
 
         with open(str(Path.home())+'/.tex2im_template','w') as file:
             file.writelines(new_template)
-        
+    
     def get_image_info(self):
+        self.cancel = False
         global latex_script, fontsize
         latex_script = self.script_box.get('1.0','end-1c')
         fontsize = float(self.font_box.get())
@@ -117,14 +124,22 @@ def clean_files(base,clean_dvi=True,clean_tex=False):
 def get_dpi(fontsize):
     return fontsize*96/72*72.27/10
 
+def write_script_to_metadata(file_name,latex_script,fontsize):
+    image = PngImageFile(file_name)
+    metadata = PngInfo()
+    metadata.add_text('Script',latex_script)
+    metadata.add_text('Font Size',str(fontsize))
+    image.save(file_name,pnginfo=metadata)
+
 if __name__ == '__main__':
     
     root = inputWindow()    
     root.mainloop()
-
-    try:
+    
+    if not root.cancel:
+    
         file_name = get_unique_name('output.tex')
-
+        
         with open(file_name,'w') as file:
             file.writelines(latex_script)
         
@@ -136,9 +151,8 @@ if __name__ == '__main__':
         convert_dvi_cmd = 'dvipng %s -o %s -T "tight" -D %d'%(base+'dvi',base+'png',dpi)
         res = subprocess.run(convert_dvi_cmd,shell=True,stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
         
-        clean_files(base,clean_dvi=True,clean_tex=True)
-
-    except:
-        None
+        clean_files(base,clean_dvi=True,clean_tex=False)
+        write_script_to_metadata(base+'png',latex_script,int(fontsize))
+        
 
 
