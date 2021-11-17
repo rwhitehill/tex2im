@@ -17,14 +17,25 @@ from tkinter import ttk
 class inputWindow(tk.Tk):
     
     def __init__(self):
-        super().__init__()
-        
-        ### set cancel default to True
-        self.cancel = True
+        super().__init__() 
+        self.cancel      = True
+        self.regenerated = False
 
+        self.display_window()
+
+    def display_window(self):
         ### configuring root window
         self.title('Latex to Image')
         self.resizable(height=False,width=False)
+        
+        ### prompt for regenerating image
+        self.regenerate_prompt = tk.Entry(self,width=30)
+        self.regenerate_prompt.grid()
+
+        self.regenerate_button = ttk.Button(self,text='Reload')
+        self.regenerate_button['command'] = self.load_image_info
+        self.regenerate_button.grid()
+        
 
         ### main box with latex script
         home = str(Path.home())
@@ -50,9 +61,10 @@ class inputWindow(tk.Tk):
         ### other text boxes
         self.font_label = tk.Label(self,text='font size')
         self.font_label.grid()
-        self.font_size = tk.StringVar(value=20)
+        #self.font_size = tk.StringVar(value=20)
         self.font_box = tk.Entry(self,width=3)
-        self.font_box['textvariable'] = self.font_size
+        self.font_box.insert(0,'20')
+        #self.font_box['textvariable'] = self.font_size
         self.font_box.grid()
 
         ### buttons
@@ -76,6 +88,22 @@ class inputWindow(tk.Tk):
         for child in self.winfo_children():
             child.grid(padx=5,pady=5)
     
+    def load_image_info(self):
+        self.regenerated = True
+    
+        file_path = self.regenerate_prompt.get() 
+        image     = PngImageFile(file_path)
+        metadata = image.text
+        
+        self.script_box.delete('1.0','end')
+        self.script_box.insert('1.0',metadata['Script'])
+
+        self.font_box.delete(0,'end')
+        self.font_box.insert(0,metadata['Font Size'])
+        
+        global base
+        base = ''.join(os.path.splitext(file_path)[:-1])
+
     def display_message(self):
         message = 'This is a program that converts short latex scripts to an image.'
         messagebox.showinfo('Information',message)
@@ -109,11 +137,11 @@ def get_unique_name(file_name):
     return file_name
 
 def clean_files(base,clean_dvi=True,clean_tex=False):
-    file_types = ['aux','log']
+    file_types = ['.aux','.log']
     if clean_dvi:
-        file_types.append('dvi')
+        file_types.append('.dvi')
     if clean_tex:
-        file_types.append('tex')
+        file_types.append('.tex')
 
     for file_type in file_types:
         try:
@@ -137,22 +165,23 @@ if __name__ == '__main__':
     root.mainloop()
     
     if not root.cancel:
-    
-        file_name = get_unique_name('output.tex')
         
-        with open(file_name,'w') as file:
+        if not root.regenerated:
+            base = get_unique_name('output.png')
+            base = base[:base.index('.')]
+        
+        with open(base+'.tex','w') as file:
             file.writelines(latex_script)
         
-        latex_cmd = 'latex %s'%file_name
+        latex_cmd = 'latex %s'%(base+'.tex')
         res = subprocess.run(latex_cmd,shell=True,stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
         
-        base = file_name[:file_name.index('.')+1]
         dpi = get_dpi(fontsize)
-        convert_dvi_cmd = 'dvipng %s -o %s -T "tight" -D %d'%(base+'dvi',base+'png',dpi)
+        convert_dvi_cmd = 'dvipng %s -o %s -T "tight" -D %d'%(base+'.dvi',base+'.png',dpi)
         res = subprocess.run(convert_dvi_cmd,shell=True,stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
         
-        clean_files(base,clean_dvi=True,clean_tex=False)
-        write_script_to_metadata(base+'png',latex_script,int(fontsize))
+        clean_files(base,clean_dvi=True,clean_tex=True)
+        write_script_to_metadata(base+'.png',latex_script,int(fontsize))
         
 
 
