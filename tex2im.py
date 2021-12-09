@@ -8,7 +8,7 @@ from PIL import Image,ImageChops,ImageOps
 from PIL.PngImagePlugin import PngImageFile, PngInfo
 
 import tkinter as tk
-from tkinter import messagebox
+from tkinter import messagebox, filedialog
 from tkinter import ttk
 
 
@@ -17,9 +17,10 @@ from tkinter import ttk
 class inputWindow(tk.Tk):
     
     def __init__(self):
-        super().__init__() 
+        super().__init__()
         self.cancel      = True
         self.regenerated = False
+        self.home = str(Path.home())
 
         self.display_window()
 
@@ -29,17 +30,25 @@ class inputWindow(tk.Tk):
         self.resizable(height=False,width=False)
         
         ### prompt for regenerating image
-        self.regenerate_prompt = tk.Entry(self,width=30)
-        self.regenerate_prompt.grid()
-
-        self.regenerate_button = ttk.Button(self,text='Reload')
-        self.regenerate_button['command'] = self.load_image_info
-        self.regenerate_button.grid()
+        self.file_frame = tk.Frame(self)
+        self.file_frame.grid()
         
+        self.regenerate_prompt = tk.Entry(self.file_frame,width=50)
+        self.regenerate_prompt.grid(row=0,column=0,columnspan=4)
+
+        self.file_explorer = ttk.Button(self.file_frame,text='Open a File')
+        self.file_explorer['command'] = self.select_file
+        self.file_explorer.grid(row=1,column=1)
+
+        self.regenerate_button = ttk.Button(self.file_frame,text='Reload')
+        self.regenerate_button['command'] = self.load_image_info
+        self.regenerate_button.grid(row=1,column=2)
+        
+        for child in self.file_frame.winfo_children():
+            child.grid(padx=1,pady=5)
 
         ### main box with latex script
-        home = str(Path.home())
-        if not os.path.isfile(home+'/.tex2im_template'):
+        if not os.path.isfile(self.home+'/.tex2im_template'):
             tex_template = '\n'.join(['\\documentclass{article}',
                 '\\usepackage{amsmath}',
                 '\\pagestyle{empty}',
@@ -47,46 +56,62 @@ class inputWindow(tk.Tk):
                 2*'\n',
                 '\\end{document}'])
 
-            with open(home+'/.tex2im_template','w') as file:
+            with open(self.home+'/.tex2im_template','w') as file:
                 file.writelines(tex_template)
 
         else:
-            with open(home+'/.tex2im_template','r') as file:
+            with open(self.home+'/.tex2im_template','r') as file:
                 tex_template = ''.join(file.readlines())
 
-        self.script_box = tk.Text(self,width=50,height=15)
+        self.script_frame = tk.Frame(self)
+        self.script_frame.grid()
+        
+        self.script_box = tk.Text(self.script_frame,width=50,height=15)
         self.script_box.insert('1.0',tex_template)
-        self.script_box.grid()
+        self.script_box.grid(row=2,column=0,columnspan=3)
+
+        for child in self.script_frame.winfo_children():
+            child.grid(padx=5,pady=5)
        
         ### other text boxes
-        self.font_label = tk.Label(self,text='font size')
-        self.font_label.grid()
+        self.font_frame = tk.Frame(self)
+        self.font_frame.grid()
+        
+        self.font_label = tk.Label(self.font_frame,text='font size')
+        self.font_label.grid(row=3,column=0)
         #self.font_size = tk.StringVar(value=20)
-        self.font_box = tk.Entry(self,width=3)
+        self.font_box = tk.Entry(self.font_frame,width=3)
         self.font_box.insert(0,'20')
         #self.font_box['textvariable'] = self.font_size
-        self.font_box.grid()
+        self.font_box.grid(row=3,column=1)
 
-        ### buttons
-        self.generate_button = ttk.Button(self,text='Generate')
-        self.generate_button['command'] = self.get_image_info
-        self.generate_button.grid()
-        
-        self.cancel_button = ttk.Button(self,text='Cancel')
-        self.cancel_button['command'] = self.destroy
-        self.cancel_button.grid()
-        
-        self.update_template_button = ttk.Button(self,text='Update template')
-        self.update_template_button['command'] = self.update_template
-        self.update_template_button.grid()
-        
-        ### opens window with information about program
-        self.message_button = ttk.Button(self,text='Information')
-        self.message_button['command'] = self.display_message
-        self.message_button.grid()
-
-        for child in self.winfo_children():
+        for child in self.font_frame.winfo_children():
             child.grid(padx=5,pady=5)
+        
+        ### buttons
+        self.button_frame = tk.Frame(self)
+        self.button_frame.grid()
+        
+        self.generate_button = ttk.Button(self.button_frame,text='Generate')
+        self.generate_button['command'] = self.get_image_info
+        self.generate_button.grid(row=4,column=2)
+        
+        self.cancel_button = ttk.Button(self.button_frame,text='Cancel')
+        self.cancel_button['command'] = self.destroy
+        self.cancel_button.grid(row=4,column=1)
+        
+        self.update_template_button = ttk.Button(self.button_frame,text='Update template')
+        self.update_template_button['command'] = self.update_template
+        self.update_template_button.grid(row=4,column=0)
+
+        for child in self.button_frame.winfo_children():
+            child.grid(padx=5,pady=5)
+        ### opens window with information about program
+        #self.message_button = ttk.Button(self,text='Information')
+        #self.message_button['command'] = self.display_message
+        #self.message_button.grid()
+
+    
     
     def load_image_info(self):
         self.regenerated = True
@@ -103,6 +128,13 @@ class inputWindow(tk.Tk):
         
         global base
         base = ''.join(os.path.splitext(file_path)[:-1])
+
+    def select_file(self):
+        self.file_types = [("PNG", "*.png")]
+        self.file_path = filedialog.askopenfilenames(parent=self,filetypes=self.file_types)
+
+        self.regenerate_prompt.delete(0,'end')
+        self.regenerate_prompt.insert(0,self.file_path[0])
 
     def display_message(self):
         message = 'This is a program that converts short latex scripts to an image.'
@@ -182,6 +214,3 @@ if __name__ == '__main__':
         
         clean_files(base,clean_dvi=True,clean_tex=True)
         write_script_to_metadata(base+'.png',latex_script,int(fontsize))
-        
-
-
