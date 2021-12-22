@@ -1,0 +1,6 @@
+*.DS_Store
+*.aux
+*.log
+*.dvi
+*.tex
+/tex_input
