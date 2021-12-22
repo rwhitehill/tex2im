@@ -216,6 +216,9 @@ if __name__ == '__main__':
         dpi = get_dpi(fontsize)
         convert_dvi_cmd = 'dvipng %s -o %s -T "tight" -D %d'%(base+'.dvi',base+'.png',dpi)
         res = subprocess.run(convert_dvi_cmd,shell=True,stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
-        
+       
+        make_transparent_cmd = 'convert %s -transparent white %s'%(base+'.png',base+'.png')
+        res = subprocess.run(make_transparent_cmd,shell=True,stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
+
         clean_files(base,clean_dvi=True,clean_tex=True)
         write_script_to_metadata(base+'.png',latex_script,int(fontsize))
