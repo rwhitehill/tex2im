@@ -31,5 +31,5 @@ There are certain settings in the code that may be changed without changing the 
 ### Future changes
 
 * Error processing
-- The program quits during certain operations when it is not ideal: for example, when the file explorer is exited during reloading.
+    * The program quits during certain operations when it is not ideal: for example, when the file explorer is exited during reloading.
 * Image naming: it may be desirable to have the option to name the image file.
