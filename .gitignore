@@ -3,4 +3,4 @@
 *.log
 *.dvi
 *.tex
-/tex_input
+tex2im_output/
