@@ -25,3 +25,11 @@ A capability of the program is to regenerate images. In the program window, the 
 For my systems, I placed the script into a bin file and added the bin directory to PATH, which allows the file to be run from anywhere.
 
 Note that the file permissions must be changed so that the file is executable with something like `chmod +x tex2im.py`.
+
+There are certain settings in the code that may be changed without changing the operation of the program. For example, the program cleans files produced converting the latex script to a DVI file. You may wish to change whether the TEX/DVI file are deleted by changing the truth value for the optional arguments in `clean_files(base,clean_dvi=True,clean_tex=True)`.
+
+### Future changes
+
+* Error processing
+- The program quits during certain operations when it is not ideal: for example, when the file explorer is exited during reloading.
+* Image naming: it may be desirable to have the option to name the image file.
