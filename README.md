@@ -1,5 +1,7 @@
 # tex2im
 
+![Logo](logo.png)
+
 ### Program Requirements
 
 To run the program the following must be installed:
