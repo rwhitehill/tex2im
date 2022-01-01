@@ -3,5 +3,4 @@
 *.log
 *.dvi
 *.tex
-*.png
 tex2im_output/
