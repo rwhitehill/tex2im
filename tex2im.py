@@ -198,11 +198,6 @@ if __name__ == '__main__':
     
     if not root.cancel:
         
-        if not os.path.isdir('tex2im_output'):
-            os.mkdir(os.path.join(os.getcwd(),'tex2im_output'))
-        
-        os.chdir(os.path.join(os.getcwd(),'tex2im_output'))
-
         if not root.regenerated:
             base = get_unique_name('output.png')
             base = base[:base.index('.')]
